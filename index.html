@@ -7,151 +7,94 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>驾驶里程记录</title>
 <style>
-/* ===== RESET & ROOT ===== */
 :root{
-  --bg:#0f0f0f; --s1:#1a1a1a; --s2:#242424; --s3:#2e2e2e;
-  --bd:rgba(255,255,255,0.09); --bd2:rgba(255,255,255,0.17);
-  --tx:#f0f0f0; --mu:#888; --mu2:#aaa;
-  --gr:#22c55e; --re:#ef4444; --am:#f59e0b;
+  --bg:#0f0f0f;--s1:#1a1a1a;--s2:#242424;--s3:#2e2e2e;
+  --bd:rgba(255,255,255,0.09);--bd2:rgba(255,255,255,0.17);
+  --tx:#f0f0f0;--mu:#888;--mu2:#aaa;
+  --gr:#22c55e;--re:#ef4444;--am:#f59e0b;--bl:#3b82f6;
   --r:11px;
 }
 *{-webkit-box-sizing:border-box;box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html{height:100%;}
-body{
-  background:var(--bg);color:var(--tx);
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;
-  min-height:100%;
-  -webkit-overscroll-behavior:none;overscroll-behavior:none;
-  -webkit-text-size-adjust:100%;
-  padding-bottom:40px;
-}
+body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;min-height:100%;-webkit-overscroll-behavior:none;overscroll-behavior:none;-webkit-text-size-adjust:100%;padding-bottom:48px;}
 
-/* ===== TOPBAR ===== */
-.topbar{
-  background:var(--s1);border-bottom:1px solid var(--bd);
-  padding:12px 16px 10px;
-  display:-webkit-flex;display:flex;
-  -webkit-align-items:center;align-items:center;
-  -webkit-justify-content:space-between;justify-content:space-between;
-  position:sticky;top:0;z-index:50;
-}
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--bd);padding:12px 16px 10px;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:space-between;justify-content:space-between;position:sticky;top:0;z-index:50;}
 .tl{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:9px;}
 .logo{width:30px;height:30px;background:var(--gr);border-radius:7px;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center;font-size:15px;}
 .app-name{font-size:15px;font-weight:600;letter-spacing:-.3px;}
 .app-sub{font-size:10px;color:var(--mu);}
+.tr{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:10px;}
 #clock{font-size:12px;color:var(--mu);}
 
-/* ===== TABS ===== */
-.tabs{
-  display:-webkit-flex;display:flex;gap:3px;
-  background:var(--s1);border:1px solid var(--bd);
-  border-radius:var(--r);padding:3px;margin:14px 14px 0;
-}
-.tab-btn{
-  -webkit-flex:1;flex:1;padding:9px 4px;font-size:13px;font-weight:500;
-  border-radius:8px;border:none;background:none;color:var(--mu);
-  cursor:pointer;-webkit-appearance:none;appearance:none;
-  font-family:inherit;
-}
+/* SYNC indicator */
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#444;-webkit-flex-shrink:0;flex-shrink:0;}
+.sync-dot.ok{background:var(--gr);}
+.sync-dot.spin{background:var(--am);-webkit-animation:blink 0.8s infinite;animation:blink 0.8s infinite;}
+.sync-dot.err{background:var(--re);}
+
+/* TABS */
+.tabs{display:-webkit-flex;display:flex;gap:3px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:3px;margin:14px 14px 0;}
+.tab-btn{-webkit-flex:1;flex:1;padding:9px 4px;font-size:13px;font-weight:500;border-radius:8px;border:none;background:none;color:var(--mu);cursor:pointer;-webkit-appearance:none;appearance:none;font-family:inherit;}
 .tab-btn.on{background:var(--s2);color:var(--tx);border:1px solid var(--bd2);}
 
-/* ===== PANELS ===== */
+/* PANELS */
 .panel{display:none;padding:14px;}
 .panel.on{display:block;}
 
-/* ===== CARD ===== */
+/* CARD */
 .card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin-bottom:12px;}
 .clabel{font-size:10px;font-weight:600;color:var(--mu);letter-spacing:1.1px;text-transform:uppercase;margin-bottom:13px;}
 
-/* ===== FORM FIELDS ===== */
+/* FIELDS */
 .fg{display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;gap:9px;margin-bottom:10px;}
 .fg .fld{-webkit-flex:1 1 120px;flex:1 1 120px;min-width:0;}
 .mf-row{display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;gap:9px;margin-bottom:9px;}
 .mf-row .fld{-webkit-flex:1 1 130px;flex:1 1 130px;min-width:0;}
 .fld{display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;gap:5px;}
 .fld label{font-size:11px;color:var(--mu);font-weight:500;}
-.fld select,
-.fld input[type=text],
-.fld input[type=date],
-.fld input[type=time],
-.fld input[type=number]{
+.fld select,.fld input[type=text],.fld input[type=date],.fld input[type=time],.fld input[type=number]{
   background:var(--s2);border:1px solid var(--bd2);border-radius:8px;
-  padding:11px 12px;font-size:15px;color:var(--tx);
-  -webkit-appearance:none;appearance:none;width:100%;outline:none;
-  font-family:inherit;
-  /* Prevent iOS zoom on focus (must be >= 16px) */
+  padding:11px 12px;font-size:16px;color:var(--tx);
+  -webkit-appearance:none;appearance:none;width:100%;outline:none;font-family:inherit;
 }
-/* Custom select arrow */
-.fld select{
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;
-}
+.fld select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
 
-/* ===== GPS BAR ===== */
-.gps-bar{
-  display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;
-  gap:8px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;
-  padding:9px 12px;font-size:12px;color:var(--mu);margin-bottom:11px;
-  min-height:36px;
-}
-.dot{width:8px;height:8px;border-radius:50%;background:#444;-webkit-flex-shrink:0;flex-shrink:0;-webkit-transition:background .3s;transition:background .3s;}
+/* GPS BAR */
+.gps-bar{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--mu);margin-bottom:11px;min-height:36px;}
+.dot{width:8px;height:8px;border-radius:50%;background:#444;-webkit-flex-shrink:0;flex-shrink:0;}
 .dot.on{background:var(--gr);-webkit-animation:blink 1.4s infinite;animation:blink 1.4s infinite;}
 .dot.err{background:var(--re);}
 @-webkit-keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
 
-/* ===== BIG BUTTONS ===== */
+/* BIG BUTTONS */
 .brow{display:-webkit-flex;display:flex;gap:10px;}
-.bbtn{
-  -webkit-flex:1;flex:1;
-  padding:16px 8px;border-radius:var(--r);border:none;
-  font-size:16px;font-weight:700;cursor:pointer;
-  display:-webkit-flex;display:flex;
-  -webkit-align-items:center;align-items:center;
-  -webkit-justify-content:center;justify-content:center;
-  gap:6px;-webkit-appearance:none;appearance:none;
-  font-family:inherit;min-height:52px;
-  -webkit-transition:opacity .15s;transition:opacity .15s;
-}
+.bbtn{-webkit-flex:1;flex:1;padding:16px 8px;border-radius:var(--r);border:none;font-size:16px;font-weight:700;cursor:pointer;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center;gap:6px;-webkit-appearance:none;appearance:none;font-family:inherit;min-height:52px;}
 .bbtn:active{opacity:.75;}
 .bbtn[disabled]{opacity:.3;}
 .go{background:var(--gr);color:#000;}
 .stop{background:var(--re);color:#fff;}
 
-/* ===== LIVE STRIP ===== */
-.live{
-  display:none;
-  background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);
-  border-radius:8px;padding:10px 14px;margin-top:10px;
-  font-size:13px;color:var(--gr);
-  -webkit-justify-content:space-between;justify-content:space-between;
-  -webkit-align-items:center;align-items:center;
-}
+/* LIVE STRIP */
+.live{display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:10px 14px;margin-top:10px;font-size:13px;color:var(--gr);-webkit-justify-content:space-between;justify-content:space-between;-webkit-align-items:center;align-items:center;}
 .live.on{display:-webkit-flex;display:flex;}
 
-/* ===== ADD MANUAL BUTTON ===== */
-.add-btn{
-  width:100%;background:none;border:1px dashed var(--bd2);border-radius:var(--r);
-  padding:13px;color:var(--mu);font-size:14px;cursor:pointer;
-  -webkit-appearance:none;appearance:none;margin-top:4px;font-family:inherit;
-}
+/* ADD MANUAL */
+.add-btn{width:100%;background:none;border:1px dashed var(--bd2);border-radius:var(--r);padding:13px;color:var(--mu);font-size:14px;cursor:pointer;-webkit-appearance:none;appearance:none;margin-top:4px;font-family:inherit;}
 .add-btn:active{background:var(--s2);}
 
-/* ===== MANUAL FORM (INLINE) ===== */
+/* MANUAL FORM */
 .manual-form{display:none;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r);padding:16px;margin-top:8px;}
 .manual-form.on{display:block;}
 .mf-title{font-size:14px;font-weight:600;margin-bottom:14px;}
 .mf-actions{display:-webkit-flex;display:flex;gap:8px;margin-top:14px;}
-.sm-btn{
-  -webkit-flex:1;flex:1;padding:13px;border-radius:8px;
-  font-size:15px;font-weight:600;border:none;cursor:pointer;
-  -webkit-appearance:none;appearance:none;font-family:inherit;min-height:48px;
-}
+.sm-btn{-webkit-flex:1;flex:1;padding:13px;border-radius:8px;font-size:15px;font-weight:600;border:none;cursor:pointer;-webkit-appearance:none;appearance:none;font-family:inherit;min-height:48px;}
 .sm-cancel{background:var(--s3);color:var(--mu2);}
 .sm-save{background:var(--gr);color:#000;}
 .sm-btn:active{opacity:.8;}
 
-/* ===== STATS ===== */
+/* STATS */
 .sg{display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
 .sb{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:12px 14px;-webkit-flex:1 1 130px;flex:1 1 130px;}
 .sl{font-size:10px;color:var(--mu);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px;}
@@ -159,30 +102,24 @@ body{
 .sv.gr{color:var(--gr);}
 .sv.am{color:var(--am);}
 
-/* ===== CAR BREAKDOWN ===== */
+/* CAR BREAKDOWN */
 .bg2{display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;gap:8px;}
 .cr{background:var(--s2);border-radius:8px;padding:10px 12px;display:-webkit-flex;display:flex;-webkit-align-items:flex-start;align-items:flex-start;gap:9px;-webkit-flex:1 1 130px;flex:1 1 130px;}
 .ci{font-size:20px;line-height:1;-webkit-flex-shrink:0;flex-shrink:0;}
 .cn{font-size:12px;font-weight:600;margin-bottom:2px;}
 .cm{font-size:11px;color:var(--mu);}
 .cbw{height:3px;background:var(--bd2);border-radius:2px;margin-top:5px;}
-.cb{height:3px;border-radius:2px;background:var(--gr);-webkit-transition:width .4s;transition:width .4s;}
+.cb{height:3px;border-radius:2px;background:var(--gr);}
 
-/* ===== IRS TABLE ===== */
+/* IRS */
 .irs-row{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:space-between;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd);}
 .irs-total{display:-webkit-flex;display:flex;-webkit-justify-content:space-between;justify-content:space-between;padding:11px 0 2px;font-weight:700;}
 .irs-note{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:11px 13px;font-size:12px;color:#fbbf24;margin-top:10px;line-height:1.5;}
 
-/* ===== HISTORY TABLE ===== */
+/* TABLE */
 .th-bar{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:space-between;justify-content:space-between;margin-bottom:12px;}
 .th-title{font-size:13px;font-weight:600;}
-.exp-btn{
-  background:var(--s2);border:1px solid var(--bd2);border-radius:8px;
-  padding:8px 13px;font-size:12px;font-weight:600;color:var(--tx);
-  cursor:pointer;-webkit-appearance:none;appearance:none;
-  display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:5px;
-  font-family:inherit;
-}
+.exp-btn{background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:8px 13px;font-size:12px;font-weight:600;color:var(--tx);cursor:pointer;-webkit-appearance:none;appearance:none;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:5px;font-family:inherit;}
 .exp-btn:active{background:var(--s3);}
 .exp-btn.wide{width:100%;-webkit-justify-content:center;justify-content:center;padding:13px;margin-top:4px;}
 .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;}
@@ -197,31 +134,25 @@ tbody tr:last-child td{border-bottom:none;}
 .tb{background:rgba(167,139,250,.12);color:#a78bfa;border:1px solid rgba(167,139,250,.2);}
 .db{background:none;border:none;color:var(--mu);cursor:pointer;font-size:14px;padding:5px 8px;border-radius:5px;-webkit-appearance:none;appearance:none;min-height:32px;}
 .db:active{color:var(--re);}
-.empty{text-align:center;padding:36px 16px;color:var(--mu);font-size:13px;}
+.empty{text-align:center;padding:36px 16px;color:var(--mu);font-size:13px;line-height:1.6;}
 
-/* ===== TOAST ===== */
-.toast{
-  position:fixed;bottom:30px;left:50%;
-  -webkit-transform:translateX(-50%);transform:translateX(-50%);
-  background:var(--s2);border:1px solid var(--bd2);border-radius:20px;
-  padding:10px 20px;font-size:13px;color:var(--tx);
-  opacity:0;-webkit-transition:opacity .3s;transition:opacity .3s;
-  z-index:999;pointer-events:none;white-space:nowrap;
-}
+/* TOAST */
+.toast{position:fixed;bottom:30px;left:50%;-webkit-transform:translateX(-50%);transform:translateX(-50%);background:var(--s2);border:1px solid var(--bd2);border-radius:20px;padding:10px 20px;font-size:13px;color:var(--tx);opacity:0;-webkit-transition:opacity .3s;transition:opacity .3s;z-index:999;pointer-events:none;white-space:nowrap;max-width:90vw;}
 .toast.show{opacity:1;}
 
-/* ===== iOS Safari export notice ===== */
-.ios-notice{
-  display:none;
-  background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);
-  border-radius:8px;padding:12px 14px;font-size:12px;color:#60a5fa;
-  margin-top:8px;line-height:1.6;
-}
+/* iOS notice */
+.ios-notice{display:none;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:8px;padding:12px 14px;font-size:12px;color:#60a5fa;margin-top:8px;line-height:1.6;}
+
+/* Loading overlay */
+.loading{display:none;text-align:center;padding:30px 16px;color:var(--mu);font-size:13px;}
+.loading.on{display:block;}
+.spin-icon{display:inline-block;-webkit-animation:spin 1s linear infinite;animation:spin 1s linear infinite;font-size:20px;margin-bottom:8px;}
+@-webkit-keyframes spin{to{-webkit-transform:rotate(360deg);transform:rotate(360deg);}}
+@keyframes spin{to{transform:rotate(360deg);}}
 </style>
 </head>
 <body>
 
-<!-- Toast notification -->
 <div class="toast" id="toast"></div>
 
 <div class="topbar">
@@ -229,10 +160,13 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="logo">🚗</div>
     <div>
       <div class="app-name">里程记录</div>
-      <div class="app-sub">Mileage Tracker</div>
+      <div class="app-sub">云端同步版</div>
     </div>
   </div>
-  <div id="clock">--:--</div>
+  <div class="tr">
+    <div class="sync-dot" id="sdot" title="云端同步状态"></div>
+    <div id="clock">--:--</div>
+  </div>
 </div>
 
 <div class="tabs">
@@ -243,7 +177,6 @@ tbody tr:last-child td{border-bottom:none;}
 
 <!-- ========== 记录行程 ========== -->
 <div class="panel on" id="p0">
-
   <div class="card">
     <div class="clabel">新行程</div>
     <div class="fg">
@@ -261,17 +194,14 @@ tbody tr:last-child td{border-bottom:none;}
         <input type="text" id="purpose" placeholder="拜访客户、送货…" autocomplete="off" autocorrect="off" autocapitalize="off">
       </div>
     </div>
-
     <div class="gps-bar">
       <div class="dot" id="gdot"></div>
       <span id="gtxt">等待 GPS…</span>
     </div>
-
     <div class="brow">
       <button class="bbtn go"   id="bstart" onclick="startTrip()">▶ 开始行程</button>
       <button class="bbtn stop" id="bend"   onclick="endTrip()" disabled>■ 结束行程</button>
     </div>
-
     <div class="live" id="live">
       <span id="ltxt">行驶中…</span>
       <span id="lmi">0.00 mi</span>
@@ -322,7 +252,6 @@ tbody tr:last-child td{border-bottom:none;}
       <button class="sm-btn sm-save"   onclick="saveManual()">✓ 保存记录</button>
     </div>
   </div>
-
 </div>
 
 <!-- ========== 历史记录 ========== -->
@@ -332,64 +261,171 @@ tbody tr:last-child td{border-bottom:none;}
       <div class="th-title">所有行程</div>
       <button class="exp-btn" onclick="exportExcel()">⬇ 导出 Excel</button>
     </div>
+    <div class="loading" id="hist-loading"><div class="spin-icon">⟳</div><br>正在从云端加载…</div>
     <div id="hist-content"><div class="empty">暂无记录</div></div>
-    <div class="ios-notice" id="ios-notice-hist">
-      📱 iOS Safari 提示：Excel 文件将在新标签页打开，请点右上角「分享」→「存储到文件」保存。
-    </div>
+    <div class="ios-notice" id="ios-notice-hist">📱 iOS Safari：Excel 将在新标签页打开，点右上角「分享」→「存储到文件」保存。</div>
   </div>
 </div>
 
 <!-- ========== 统计报表 ========== -->
 <div class="panel" id="p2">
-  <div class="sg" id="sgrid">
-    <div class="sb"><div class="sl">总里程</div><div class="sv gr" id="s0">0.0 mi</div></div>
-    <div class="sb"><div class="sl">行程次数</div><div class="sv" id="s1">0</div></div>
-    <div class="sb"><div class="sl">本月里程</div><div class="sv" id="s2">0.0 mi</div></div>
-    <div class="sb"><div class="sl">平均每次</div><div class="sv" id="s3">0.0 mi</div></div>
+  <div class="sg">
+    <div class="sb"><div class="sl">总里程</div><div class="sv gr" id="s0">—</div></div>
+    <div class="sb"><div class="sl">行程次数</div><div class="sv" id="s1">—</div></div>
+    <div class="sb"><div class="sl">本月里程</div><div class="sv" id="s2">—</div></div>
+    <div class="sb"><div class="sl">平均每次</div><div class="sv" id="s3">—</div></div>
   </div>
-
   <div class="card">
     <div class="clabel">车辆里程分布</div>
     <div class="bg2" id="breakdown"></div>
   </div>
-
   <div class="card">
     <div class="clabel" id="irs-title">IRS 报税摘要</div>
     <div id="irs"></div>
   </div>
-
   <button class="exp-btn wide" onclick="exportExcel()">⬇ 导出完整 Excel（含 IRS 格式）</button>
-  <div class="ios-notice" id="ios-notice-stats">
-    📱 iOS Safari 提示：Excel 文件将在新标签页打开，请点右上角「分享」→「存储到文件」保存。
-  </div>
+  <div class="ios-notice" id="ios-notice-stats">📱 iOS Safari：Excel 将在新标签页打开，点右上角「分享」→「存储到文件」保存。</div>
 </div>
 
-<!-- ========== XLSX loaded async ========== -->
 <script>
-// ===== Polyfill padStart for old Android =====
+// ===== CONFIG =====
+var SB_URL = 'https://qmmdkctlrpuaidkiiojx.supabase.co';
+var SB_KEY = 'sb_publishable_OFSuT5UlZ7hUHaDumrMXrw_Hv1fI9lR';
+var TABLE  = 'trips';
+
+// ===== Polyfill =====
 if (!String.prototype.padStart) {
   String.prototype.padStart = function(len, ch) {
     ch = ch || ' '; var s = String(this);
-    while (s.length < len) s = ch + s;
-    return s;
+    while (s.length < len) s = ch + s; return s;
   };
 }
 
-// ===== Detect iOS =====
+// ===== Device =====
 var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-var isAndroid = /Android/.test(navigator.userAgent);
 
-// ===== Storage =====
-var STORE_KEY = 'mt_v4';
+// ===== Local cache (fallback when offline) =====
+var CACHE_KEY = 'mt_cache_v4';
 var trips = [];
-try {
-  var raw = localStorage.getItem(STORE_KEY);
-  if (raw) trips = JSON.parse(raw);
-} catch(e) { trips = []; }
+try { trips = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]'); } catch(e){ trips = []; }
+function saveCache() { try { localStorage.setItem(CACHE_KEY, JSON.stringify(trips)); } catch(e){} }
 
-function save() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(trips)); }
-  catch(e) { showToast('⚠️ 存储失败，数据可能无法保存'); }
+// ===== Supabase API helpers =====
+function sbHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'apikey': SB_KEY,
+    'Authorization': 'Bearer ' + SB_KEY
+  };
+}
+
+function setSyncDot(state) {
+  var d = document.getElementById('sdot');
+  d.className = 'sync-dot' + (state === 'ok' ? ' ok' : state === 'spin' ? ' spin' : state === 'err' ? ' err' : '');
+}
+
+// Fetch all trips from Supabase, ordered newest first
+function fetchTrips(cb) {
+  setSyncDot('spin');
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', SB_URL + '/rest/v1/' + TABLE + '?order=id.desc', true);
+  var hdrs = sbHeaders();
+  for (var k in hdrs) xhr.setRequestHeader(k, hdrs[k]);
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      try {
+        var data = JSON.parse(xhr.responseText);
+        // Normalize field names (Supabase uses snake_case)
+        trips = data.map(function(r) {
+          return {
+            id:        r.id,
+            car:       r.car,
+            purpose:   r.purpose || '—',
+            date:      r.date,
+            startTime: r.start_time,
+            endTime:   r.end_time,
+            miles:     parseFloat(r.miles) || 0,
+            manual:    r.manual || false
+          };
+        });
+        saveCache();
+        setSyncDot('ok');
+        if (cb) cb(null);
+      } catch(e) { setSyncDot('err'); if (cb) cb(e); }
+    } else {
+      setSyncDot('err');
+      if (cb) cb(new Error('HTTP ' + xhr.status));
+    }
+  };
+  xhr.onerror = function() { setSyncDot('err'); if (cb) cb(new Error('Network error')); };
+  xhr.send();
+}
+
+// Insert one trip
+function insertTrip(trip, cb) {
+  setSyncDot('spin');
+  var body = JSON.stringify({
+    id:         trip.id,
+    car:        trip.car,
+    purpose:    trip.purpose,
+    date:       trip.date,
+    start_time: trip.startTime,
+    end_time:   trip.endTime || null,
+    miles:      trip.miles,
+    manual:     trip.manual || false
+  });
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', SB_URL + '/rest/v1/' + TABLE, true);
+  var hdrs = sbHeaders();
+  hdrs['Prefer'] = 'return=minimal';
+  for (var k in hdrs) xhr.setRequestHeader(k, hdrs[k]);
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      setSyncDot('ok'); if (cb) cb(null);
+    } else {
+      setSyncDot('err'); if (cb) cb(new Error('HTTP ' + xhr.status + ': ' + xhr.responseText));
+    }
+  };
+  xhr.onerror = function() { setSyncDot('err'); if (cb) cb(new Error('Network error')); };
+  xhr.send(body);
+}
+
+// Update end_time + miles when trip ends
+function updateTrip(id, endTime, miles, cb) {
+  setSyncDot('spin');
+  var body = JSON.stringify({ end_time: endTime, miles: miles });
+  var xhr = new XMLHttpRequest();
+  xhr.open('PATCH', SB_URL + '/rest/v1/' + TABLE + '?id=eq.' + id, true);
+  var hdrs = sbHeaders();
+  hdrs['Prefer'] = 'return=minimal';
+  for (var k in hdrs) xhr.setRequestHeader(k, hdrs[k]);
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      setSyncDot('ok'); if (cb) cb(null);
+    } else {
+      setSyncDot('err'); if (cb) cb(new Error('HTTP ' + xhr.status));
+    }
+  };
+  xhr.onerror = function() { setSyncDot('err'); if (cb) cb(new Error('Network error')); };
+  xhr.send(body);
+}
+
+// Delete one trip
+function deleteTrip(id, cb) {
+  setSyncDot('spin');
+  var xhr = new XMLHttpRequest();
+  xhr.open('DELETE', SB_URL + '/rest/v1/' + TABLE + '?id=eq.' + id, true);
+  var hdrs = sbHeaders();
+  for (var k in hdrs) xhr.setRequestHeader(k, hdrs[k]);
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      setSyncDot('ok'); if (cb) cb(null);
+    } else {
+      setSyncDot('err'); if (cb) cb(new Error('HTTP ' + xhr.status));
+    }
+  };
+  xhr.onerror = function() { setSyncDot('err'); if (cb) cb(new Error('Network')); };
+  xhr.send();
 }
 
 // ===== Toast =====
@@ -403,160 +439,144 @@ function showToast(msg, dur) {
 }
 
 // ===== Clock =====
+function pad(n){ return n < 10 ? '0'+n : ''+n; }
 function tickClock() {
-  var d = new Date();
-  var el = document.getElementById('clock');
-  if (el) el.textContent =
-    pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  var d = new Date(), el = document.getElementById('clock');
+  if (el) el.textContent = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
 }
-function pad(n) { return n < 10 ? '0' + n : '' + n; }
-tickClock();
-setInterval(tickClock, 1000);
+tickClock(); setInterval(tickClock, 1000);
 
 // ===== Tabs =====
 function goTab(n) {
-  var i;
-  for (i = 0; i < 3; i++) {
-    document.getElementById('p' + i).className = 'panel' + (i === n ? ' on' : '');
-    document.getElementById('t' + i).className = 'tab-btn' + (i === n ? ' on' : '');
+  for (var i = 0; i < 3; i++) {
+    document.getElementById('p'+i).className = 'panel'+(i===n?' on':'');
+    document.getElementById('t'+i).className = 'tab-btn'+(i===n?' on':'');
   }
-  if (n === 1) renderHistory();
-  if (n === 2) renderStats();
+  if (n === 1) loadAndRenderHistory();
+  if (n === 2) loadAndRenderStats();
 }
 
 // ===== GPS & Trip =====
-var activeTrip = null;
-var watchId    = null;
-var lastCoords = null;
-var totalMiles = 0;
-var liveTimer  = null;
+var activeTrip = null, watchId = null, lastCoords = null, totalMiles = 0, liveTimer = null;
 
 function setGPS(state, msg) {
-  document.getElementById('gdot').className = 'dot' + (state === 'on' ? ' on' : state === 'err' ? ' err' : '');
+  document.getElementById('gdot').className = 'dot'+(state==='on'?' on':state==='err'?' err':'');
   document.getElementById('gtxt').textContent = msg;
 }
 
-function haversine(la1, lo1, la2, lo2) {
-  var R = 3958.8, toR = Math.PI / 180;
-  var dLa = (la2-la1)*toR, dLo = (lo2-lo1)*toR;
-  var a = Math.sin(dLa/2)*Math.sin(dLa/2) +
-          Math.cos(la1*toR)*Math.cos(la2*toR)*Math.sin(dLo/2)*Math.sin(dLo/2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+function haversine(la1,lo1,la2,lo2) {
+  var R=3958.8, toR=Math.PI/180;
+  var dLa=(la2-la1)*toR, dLo=(lo2-lo1)*toR;
+  var a=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(la1*toR)*Math.cos(la2*toR)*Math.sin(dLo/2)*Math.sin(dLo/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
 function startTrip() {
-  if (!navigator.geolocation) {
-    setGPS('err', '此设备不支持 GPS 定位');
-    return;
-  }
-  // Prevent double-tap
+  if (!navigator.geolocation) { setGPS('err','此设备不支持 GPS'); return; }
   document.getElementById('bstart').disabled = true;
-  setGPS('', '正在定位，请稍候…');
+  setGPS('','正在定位，请稍候…');
 
   navigator.geolocation.getCurrentPosition(
     function(pos) {
       lastCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
       totalMiles = 0;
-      setGPS('on', '已锁定 · ' + lastCoords.lat.toFixed(4) + ', ' + lastCoords.lon.toFixed(4));
+      setGPS('on','已锁定 · '+lastCoords.lat.toFixed(4)+', '+lastCoords.lon.toFixed(4));
 
       var now = new Date();
       activeTrip = {
-        id: Date.now(),
-        car: document.getElementById('car').value,
-        purpose: document.getElementById('purpose').value.trim() || '—',
-        date: fmtDate(now),
+        id:        now.getTime(),
+        car:       document.getElementById('car').value,
+        purpose:   document.getElementById('purpose').value.trim() || '—',
+        date:      fmtDate(now),
         startTime: fmtTime(now),
-        startTs: now.getTime()
+        startTs:   now.getTime()
       };
+
+      // Insert to Supabase immediately (with end_time null, miles 0)
+      var tripToInsert = {
+        id: activeTrip.id, car: activeTrip.car, purpose: activeTrip.purpose,
+        date: activeTrip.date, startTime: activeTrip.startTime,
+        endTime: null, miles: 0, manual: false
+      };
+      insertTrip(tripToInsert, function(err) {
+        if (err) showToast('⚠️ 云端同步失败，数据将本地保存');
+      });
 
       document.getElementById('bend').disabled = false;
       document.getElementById('live').className = 'live on';
 
-      // Watch GPS updates
       watchId = navigator.geolocation.watchPosition(
         function(p) {
           if (lastCoords) {
-            var d = haversine(lastCoords.lat, lastCoords.lon, p.coords.latitude, p.coords.longitude);
-            if (d >= 0 && d < 50) totalMiles += d; // filter teleport glitches
+            var d = haversine(lastCoords.lat,lastCoords.lon,p.coords.latitude,p.coords.longitude);
+            if (d >= 0 && d < 50) totalMiles += d;
           }
           lastCoords = { lat: p.coords.latitude, lon: p.coords.longitude };
         },
-        function(e) {
-          // GPS watch error — show warning but keep trip going
-          if (e.code === 1) setGPS('err', 'GPS 权限被关闭');
-          // don't stop the trip
-        },
-        { enableHighAccuracy: true, maximumAge: 4000, timeout: 30000 }
+        function(e) { if (e.code===1) setGPS('err','GPS 权限被关闭'); },
+        { enableHighAccuracy:true, maximumAge:4000, timeout:30000 }
       );
 
-      // Live timer
       liveTimer = setInterval(function() {
         if (!activeTrip) return;
-        var sec = Math.round((Date.now() - activeTrip.startTs) / 1000);
-        var mm = Math.floor(sec / 60), ss = sec % 60;
-        document.getElementById('ltxt').textContent =
-          '行驶中 · ' + mm + '分' + pad(ss) + '秒';
-        document.getElementById('lmi').textContent =
-          totalMiles.toFixed(2) + ' mi';
+        var sec = Math.round((Date.now()-activeTrip.startTs)/1000);
+        var mm = Math.floor(sec/60), ss = sec%60;
+        document.getElementById('ltxt').textContent = '行驶中 · '+mm+'分'+pad(ss)+'秒';
+        document.getElementById('lmi').textContent  = totalMiles.toFixed(2)+' mi';
       }, 1000);
     },
     function(err) {
       document.getElementById('bstart').disabled = false;
       var msg = '定位失败，请重试';
-      if (err.code === 1) msg = '请在设置中允许位置权限后重试';
-      else if (err.code === 2) msg = '无法获取位置信号，请到室外重试';
-      else if (err.code === 3) msg = '定位超时，请重试';
+      if (err.code===1) msg='请在设置中允许位置权限后重试';
+      else if (err.code===2) msg='无法获取位置，请到室外重试';
+      else if (err.code===3) msg='定位超时，请重试';
       setGPS('err', msg);
     },
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    { enableHighAccuracy:true, timeout:20000, maximumAge:0 }
   );
 }
 
 function endTrip() {
-  // Guard: must have an active trip
-  if (!activeTrip) {
-    showToast('⚠️ 没有进行中的行程');
-    return;
-  }
-
-  if (watchId !== null) {
-    navigator.geolocation.clearWatch(watchId);
-    watchId = null;
-  }
+  if (!activeTrip) { showToast('⚠️ 没有进行中的行程'); return; }
+  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
   if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
 
   var now = new Date();
-  activeTrip.endTime = fmtTime(now);
-  activeTrip.miles   = parseFloat(totalMiles.toFixed(2));
+  var endTime = fmtTime(now);
+  var miles   = parseFloat(totalMiles.toFixed(2));
 
+  // Update in Supabase
+  updateTrip(activeTrip.id, endTime, miles, function(err) {
+    if (err) showToast('⚠️ 云端更新失败，请检查网络');
+    else showToast('✓ 行程已同步到云端！'+miles+' mi');
+  });
+
+  // Update local cache
+  activeTrip.endTime = endTime;
+  activeTrip.miles   = miles;
   trips.unshift(activeTrip);
-  save();
-  activeTrip = null;
+  saveCache();
 
+  activeTrip = null;
   document.getElementById('bstart').disabled = false;
   document.getElementById('bend').disabled   = true;
   document.getElementById('live').className  = 'live';
   document.getElementById('purpose').value   = '';
-  setGPS('', '等待 GPS…');
-
-  showToast('✓ 行程已保存！' + totalMiles.toFixed(2) + ' mi');
+  setGPS('','等待 GPS…');
 }
 
-// ===== Manual form =====
+// ===== Manual entry =====
 function toggleManual() {
-  var f   = document.getElementById('mform');
-  var btn = document.getElementById('add-toggle');
+  var f = document.getElementById('mform'), btn = document.getElementById('add-toggle');
   var opening = f.className.indexOf('on') === -1;
   f.className = opening ? 'manual-form on' : 'manual-form';
   btn.textContent = opening ? '✕ 收起' : '＋ 手动添加记录';
   if (opening) {
     var today = new Date();
-    document.getElementById('md').value =
-      today.getFullYear() + '-' + pad(today.getMonth()+1) + '-' + pad(today.getDate());
-    document.getElementById('mm').value  = '';
-    document.getElementById('mp').value  = '';
-    document.getElementById('mst').value = '';
-    document.getElementById('met').value = '';
+    document.getElementById('md').value = today.getFullYear()+'-'+pad(today.getMonth()+1)+'-'+pad(today.getDate());
+    document.getElementById('mm').value = document.getElementById('mp').value = '';
+    document.getElementById('mst').value = document.getElementById('met').value = '';
   }
 }
 
@@ -564,42 +584,48 @@ function saveManual() {
   var milesVal = document.getElementById('mm').value;
   var dateVal  = document.getElementById('md').value;
   var miles    = parseFloat(milesVal);
-
-  if (!dateVal) { showToast('⚠️ 请填写日期'); return; }
-  if (!milesVal || isNaN(miles) || miles <= 0) { showToast('⚠️ 请填写有效里程（大于 0）'); return; }
+  if (!dateVal)               { showToast('⚠️ 请填写日期'); return; }
+  if (isNaN(miles)||miles<=0) { showToast('⚠️ 请填写有效里程（大于 0）'); return; }
 
   var parts = dateVal.split('-');
-  var displayDate = parts[1] + '/' + parts[2] + '/' + parts[0];
-
-  trips.unshift({
+  var trip = {
     id:        Date.now(),
     car:       document.getElementById('mc').value,
     purpose:   document.getElementById('mp').value.trim() || '—',
-    date:      displayDate,
+    date:      parts[1]+'/'+parts[2]+'/'+parts[0],
     startTime: document.getElementById('mst').value || '—',
     endTime:   document.getElementById('met').value || '—',
     miles:     miles,
     manual:    true
+  };
+
+  insertTrip(trip, function(err) {
+    if (err) showToast('⚠️ 云端保存失败，请检查网络');
+    else showToast('✓ 记录已同步到云端！');
   });
-  save();
 
-  // Close form and confirm
-  var f   = document.getElementById('mform');
-  var btn = document.getElementById('add-toggle');
-  f.className = 'manual-form';
-  btn.textContent = '＋ 手动添加记录';
+  trips.unshift(trip);
+  saveCache();
 
-  showToast('✓ 记录已添加！');
+  document.getElementById('mform').className = 'manual-form';
+  document.getElementById('add-toggle').textContent = '＋ 手动添加记录';
 }
 
 // ===== History =====
 function vtag(car) {
-  var m = { 'F-150':'tf', 'Tesla 小白':'tw2', 'Tesla 小灰':'tg', 'Benz 200':'tb' };
-  return '<span class="vtag ' + (m[car] || 'tf') + '">' + escHtml(car) + '</span>';
+  var m={'F-150':'tf','Tesla 小白':'tw2','Tesla 小灰':'tg','Benz 200':'tb'};
+  return '<span class="vtag '+(m[car]||'tf')+'">'+esc(car)+'</span>';
 }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function loadAndRenderHistory() {
+  document.getElementById('hist-loading').className = 'loading on';
+  document.getElementById('hist-content').innerHTML = '';
+  fetchTrips(function(err) {
+    document.getElementById('hist-loading').className = 'loading';
+    if (err) showToast('⚠️ 加载失败，显示本地缓存');
+    renderHistory();
+  });
 }
 
 function renderHistory() {
@@ -612,240 +638,183 @@ function renderHistory() {
   for (var i = 0; i < trips.length; i++) {
     var t = trips[i];
     rows +=
-      '<tr>' +
-      '<td style="color:var(--mu)">' + (trips.length - i) + '</td>' +
-      '<td>' + escHtml(t.date) + '</td>' +
-      '<td>' + escHtml(t.startTime) + '</td>' +
-      '<td>' + escHtml(t.endTime || '—') + '</td>' +
-      '<td style="font-weight:700;color:var(--gr)">' + parseFloat(t.miles).toFixed(2) + '</td>' +
-      '<td>' + vtag(t.car) + '</td>' +
-      '<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mu)">' + escHtml(t.purpose) + '</td>' +
-      '<td><button class="db" onclick="delTrip(' + i + ')">✕</button></td>' +
+      '<tr>'+
+      '<td style="color:var(--mu)">'+(trips.length-i)+'</td>'+
+      '<td>'+esc(t.date)+'</td>'+
+      '<td>'+esc(t.startTime)+'</td>'+
+      '<td>'+esc(t.endTime||'—')+'</td>'+
+      '<td style="font-weight:700;color:var(--gr)">'+parseFloat(t.miles).toFixed(2)+'</td>'+
+      '<td>'+vtag(t.car)+'</td>'+
+      '<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mu)">'+esc(t.purpose)+'</td>'+
+      '<td><button class="db" onclick="confirmDelete('+t.id+')">✕</button></td>'+
       '</tr>';
   }
   el.innerHTML =
-    '<div class="tw"><table>' +
-    '<thead><tr><th>#</th><th>日期</th><th>出发</th><th>到达</th><th>里程</th><th>车辆</th><th>事由</th><th></th></tr></thead>' +
-    '<tbody>' + rows + '</tbody></table></div>';
+    '<div class="tw"><table>'+
+    '<thead><tr><th>#</th><th>日期</th><th>出发</th><th>到达</th><th>里程</th><th>车辆</th><th>事由</th><th></th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table></div>';
 }
 
-function delTrip(i) {
-  // iOS WKWebView sometimes blocks confirm(); use a safer version
+function confirmDelete(id) {
   var ok = false;
-  try { ok = window.confirm('删除这条记录？'); }
-  catch(e) { ok = true; } // if confirm blocked, just delete
+  try { ok = window.confirm('删除这条记录？将从云端同时删除。'); } catch(e){ ok = true; }
   if (!ok) return;
-  trips.splice(i, 1);
-  save();
-  renderHistory();
-  showToast('已删除');
+  deleteTrip(id, function(err) {
+    if (err) { showToast('⚠️ 删除失败'); return; }
+    for (var i = 0; i < trips.length; i++) {
+      if (trips[i].id === id) { trips.splice(i,1); break; }
+    }
+    saveCache();
+    renderHistory();
+    showToast('已删除');
+  });
 }
 
 // ===== Stats =====
-var CARS  = ['F-150', 'Tesla 小白', 'Tesla 小灰', 'Benz 200'];
-var ICONS = ['🛻', '🤍', '🩶', '⭐'];
-// IRS rates by year
-var IRS_RATES = { '2024': 0.67, '2025': 0.70 };
+var CARS  = ['F-150','Tesla 小白','Tesla 小灰','Benz 200'];
+var ICONS = ['🛻','🤍','🩶','⭐'];
+var IRS_RATES = {'2024':0.67,'2025':0.70};
+function irsRate(){ var y=String(new Date().getFullYear()); return IRS_RATES[y]||0.70; }
 
-function irsRate() {
-  var y = String(new Date().getFullYear());
-  return IRS_RATES[y] || 0.70;
+function loadAndRenderStats() {
+  fetchTrips(function(err) {
+    if (err) showToast('⚠️ 加载失败，显示本地缓存');
+    renderStats();
+  });
 }
 
 function renderStats() {
-  var i, c;
-  var total = 0;
-  for (i = 0; i < trips.length; i++) total += parseFloat(trips[i].miles || 0);
-  var count = trips.length;
-  var now = new Date();
-  var mo = pad(now.getMonth()+1), yr = String(now.getFullYear());
-  var monthMi = 0;
-  for (i = 0; i < trips.length; i++) {
-    var p = trips[i].date.split('/');
-    if (p[2] === yr && p[0] === mo) monthMi += parseFloat(trips[i].miles || 0);
+  var i, c, total=0;
+  for (i=0;i<trips.length;i++) total+=parseFloat(trips[i].miles||0);
+  var count=trips.length, now=new Date();
+  var mo=pad(now.getMonth()+1), yr=String(now.getFullYear());
+  var monthMi=0;
+  for (i=0;i<trips.length;i++){
+    var p=trips[i].date.split('/');
+    if(p[2]===yr&&p[0]===mo) monthMi+=parseFloat(trips[i].miles||0);
   }
+  document.getElementById('s0').textContent=total.toFixed(1)+' mi';
+  document.getElementById('s1').textContent=count;
+  document.getElementById('s2').textContent=monthMi.toFixed(1)+' mi';
+  document.getElementById('s3').textContent=count?(total/count).toFixed(1)+' mi':'0.0';
 
-  document.getElementById('s0').textContent = total.toFixed(1) + ' mi';
-  document.getElementById('s1').textContent = count;
-  document.getElementById('s2').textContent = monthMi.toFixed(1) + ' mi';
-  document.getElementById('s3').textContent = count ? (total/count).toFixed(1) + ' mi' : '0.0';
-
-  // By car
-  var byCar = {}, byCarN = {};
-  for (i = 0; i < CARS.length; i++) { byCar[CARS[i]] = 0; byCarN[CARS[i]] = 0; }
-  for (i = 0; i < trips.length; i++) {
-    var car = trips[i].car;
-    if (byCar[car] !== undefined) { byCar[car] += parseFloat(trips[i].miles||0); byCarN[car]++; }
+  var byCar={},byCarN={};
+  for(i=0;i<CARS.length;i++){byCar[CARS[i]]=0;byCarN[CARS[i]]=0;}
+  for(i=0;i<trips.length;i++){
+    c=trips[i].car;
+    if(byCar[c]!==undefined){byCar[c]+=parseFloat(trips[i].miles||0);byCarN[c]++;}
   }
-  var maxMi = 0.1;
-  for (c in byCar) { if (byCar[c] > maxMi) maxMi = byCar[c]; }
+  var maxMi=0.1;
+  for(c in byCar){if(byCar[c]>maxMi)maxMi=byCar[c];}
 
-  var bdHTML = '';
-  for (i = 0; i < CARS.length; i++) {
-    c = CARS[i];
-    var pct = Math.round(byCar[c] / maxMi * 100);
-    bdHTML +=
-      '<div class="cr">' +
-      '<div class="ci">' + ICONS[i] + '</div>' +
-      '<div style="-webkit-flex:1;flex:1;min-width:0;">' +
-        '<div class="cn">' + c + '</div>' +
-        '<div class="cm">' + byCar[c].toFixed(1) + ' mi · ' + byCarN[c] + ' 次</div>' +
-        '<div class="cbw"><div class="cb" style="width:' + pct + '%"></div></div>' +
+  var bdHTML='';
+  for(i=0;i<CARS.length;i++){
+    c=CARS[i]; var pct=Math.round(byCar[c]/maxMi*100);
+    bdHTML+='<div class="cr"><div class="ci">'+ICONS[i]+'</div><div style="-webkit-flex:1;flex:1;min-width:0;">'+
+      '<div class="cn">'+c+'</div>'+
+      '<div class="cm">'+byCar[c].toFixed(1)+' mi · '+byCarN[c]+' 次</div>'+
+      '<div class="cbw"><div class="cb" style="width:'+pct+'%"></div></div>'+
       '</div></div>';
   }
-  document.getElementById('breakdown').innerHTML = bdHTML;
+  document.getElementById('breakdown').innerHTML=bdHTML;
 
-  // IRS
-  var rate = irsRate();
-  var curYear = yr;
-  document.getElementById('irs-title').textContent = 'IRS 报税摘要 ' + curYear;
-
-  var irsHTML = '';
-  for (i = 0; i < CARS.length; i++) {
-    c = CARS[i];
-    irsHTML +=
-      '<div class="irs-row">' +
-        '<span>' + ICONS[i] + ' ' + c + '</span>' +
-        '<div style="text-align:right;">' +
-          '<div style="font-size:13px;">' + byCar[c].toFixed(1) + ' mi</div>' +
-          '<div style="font-size:11px;color:var(--mu)">$' + (byCar[c]*rate).toFixed(2) + '</div>' +
-        '</div>' +
-      '</div>';
+  var rate=irsRate(), curYear=yr;
+  document.getElementById('irs-title').textContent='IRS 报税摘要 '+curYear;
+  var irsHTML='';
+  for(i=0;i<CARS.length;i++){
+    c=CARS[i];
+    irsHTML+='<div class="irs-row"><span>'+ICONS[i]+' '+c+'</span>'+
+      '<div style="text-align:right"><div style="font-size:13px">'+byCar[c].toFixed(1)+' mi</div>'+
+      '<div style="font-size:11px;color:var(--mu)">$'+(byCar[c]*rate).toFixed(2)+'</div></div></div>';
   }
-  irsHTML +=
-    '<div class="irs-total">' +
-      '<span>合计预估抵税</span>' +
-      '<span style="color:var(--am);font-size:18px;">$' + (total*rate).toFixed(2) + '</span>' +
-    '</div>' +
-    '<div class="irs-note">' +
-      'IRS ' + curYear + ' 标准里程率：$' + rate.toFixed(2) + '/mile<br>' +
-      '总里程 ' + total.toFixed(1) + ' mi · 预计可抵扣 $' + (total*rate).toFixed(2) +
-    '</div>';
-  document.getElementById('irs').innerHTML = irsHTML;
+  irsHTML+='<div class="irs-total"><span>合计预估抵税</span><span style="color:var(--am);font-size:18px">$'+(total*rate).toFixed(2)+'</span></div>'+
+    '<div class="irs-note">IRS '+curYear+' 标准里程率：$'+rate.toFixed(2)+'/mile<br>总里程 '+total.toFixed(1)+' mi · 预计可抵扣 $'+(total*rate).toFixed(2)+'</div>';
+  document.getElementById('irs').innerHTML=irsHTML;
 }
 
 // ===== Excel Export =====
 function exportExcel() {
   if (!trips.length) { showToast('⚠️ 没有可导出的记录'); return; }
+  if (typeof XLSX === 'undefined') { showToast('⚠️ 导出库未加载，请检查网络'); return; }
 
-  // Check if XLSX loaded
-  if (typeof XLSX === 'undefined') {
-    showToast('⚠️ 导出库未加载，请检查网络连接后刷新');
-    return;
+  var i, c, wb=XLSX.utils.book_new(), year=new Date().getFullYear(), rate=irsRate();
+  var h1=['#','日期','出发时间','到达时间','里程(miles)','车辆','事由','记录方式'];
+  var r1=[];
+  for(i=0;i<trips.length;i++){
+    var t=trips[i];
+    r1.push([trips.length-i,t.date,t.startTime,t.endTime||'—',parseFloat(t.miles),t.car,t.purpose,t.manual?'手动':'GPS']);
   }
-
-  var i, c;
-  var wb   = XLSX.utils.book_new();
-  var year = new Date().getFullYear();
-  var rate = irsRate();
-
-  // ---- Sheet 1: All trips ----
-  var h1 = ['#','日期','出发时间','到达时间','里程(miles)','车辆','事由','记录方式'];
-  var r1 = [];
-  for (i = 0; i < trips.length; i++) {
-    var t = trips[i];
-    r1.push([trips.length-i, t.date, t.startTime, t.endTime||'—',
-             parseFloat(t.miles), t.car, t.purpose, t.manual?'手动':'GPS']);
-  }
-  var totalMi = 0;
-  for (i = 0; i < trips.length; i++) totalMi += parseFloat(trips[i].miles||0);
-  r1.push([]);
-  r1.push(['','','','合计里程', parseFloat(totalMi.toFixed(2)),'','','']);
+  var totalMi=0; for(i=0;i<trips.length;i++) totalMi+=parseFloat(trips[i].miles||0);
+  r1.push([]); r1.push(['','','','合计里程',parseFloat(totalMi.toFixed(2)),'','','']);
   r1.push(['','','','IRS '+year+' ($'+rate.toFixed(2)+'/mi)','$'+(totalMi*rate).toFixed(2),'','','']);
-  var ws1 = XLSX.utils.aoa_to_sheet([h1].concat(r1));
-  ws1['!cols'] = [{wch:4},{wch:12},{wch:10},{wch:10},{wch:13},{wch:14},{wch:26},{wch:8}];
-  XLSX.utils.book_append_sheet(wb, ws1, '全部行程');
+  var ws1=XLSX.utils.aoa_to_sheet([h1].concat(r1));
+  ws1['!cols']=[{wch:4},{wch:12},{wch:10},{wch:10},{wch:13},{wch:14},{wch:26},{wch:8}];
+  XLSX.utils.book_append_sheet(wb,ws1,'全部行程');
 
-  // ---- Sheet 2: By vehicle ----
-  var byCar2 = {};
-  for (i = 0; i < CARS.length; i++) byCar2[CARS[i]] = {count:0, miles:0};
-  for (i = 0; i < trips.length; i++) {
-    var car = trips[i].car;
-    if (byCar2[car]) { byCar2[car].count++; byCar2[car].miles += parseFloat(trips[i].miles||0); }
+  var byCar2={};
+  for(i=0;i<CARS.length;i++) byCar2[CARS[i]]={count:0,miles:0};
+  for(i=0;i<trips.length;i++){
+    var car=trips[i].car;
+    if(byCar2[car]){byCar2[car].count++;byCar2[car].miles+=parseFloat(trips[i].miles||0);}
   }
-  var ws2d = [['车辆','行程次数','总里程(mi)','IRS 抵税额($'+rate.toFixed(2)+')']];
-  for (i = 0; i < CARS.length; i++) {
-    c = CARS[i];
-    ws2d.push([c, byCar2[c].count, parseFloat(byCar2[c].miles.toFixed(2)), parseFloat((byCar2[c].miles*rate).toFixed(2))]);
-  }
-  ws2d.push(['合计', trips.length, parseFloat(totalMi.toFixed(2)), parseFloat((totalMi*rate).toFixed(2))]);
-  var ws2 = XLSX.utils.aoa_to_sheet(ws2d);
-  ws2['!cols'] = [{wch:14},{wch:10},{wch:13},{wch:18}];
-  XLSX.utils.book_append_sheet(wb, ws2, '车辆汇总');
+  var ws2d=[['车辆','行程次数','总里程(mi)','IRS 抵税额($'+rate.toFixed(2)+')']];
+  for(i=0;i<CARS.length;i++){c=CARS[i];ws2d.push([c,byCar2[c].count,parseFloat(byCar2[c].miles.toFixed(2)),parseFloat((byCar2[c].miles*rate).toFixed(2))]);}
+  ws2d.push(['合计',trips.length,parseFloat(totalMi.toFixed(2)),parseFloat((totalMi*rate).toFixed(2))]);
+  var ws2=XLSX.utils.aoa_to_sheet(ws2d); ws2['!cols']=[{wch:14},{wch:10},{wch:13},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,ws2,'车辆汇总');
 
-  // ---- Sheet 3: By month ----
-  var byMo = {};
-  for (i = 0; i < trips.length; i++) {
-    var pp = trips[i].date.split('/');
-    var k  = pp[2] + '-' + pp[0];
-    if (!byMo[k]) byMo[k] = {count:0, miles:0};
-    byMo[k].count++;
-    byMo[k].miles += parseFloat(trips[i].miles||0);
+  var byMo={};
+  for(i=0;i<trips.length;i++){
+    var pp=trips[i].date.split('/'), k=pp[2]+'-'+pp[0];
+    if(!byMo[k])byMo[k]={count:0,miles:0};
+    byMo[k].count++; byMo[k].miles+=parseFloat(trips[i].miles||0);
   }
-  var ws3d = [['月份','行程次数','总里程(mi)','IRS 抵税额']];
-  var keys = Object.keys(byMo).sort();
-  for (i = 0; i < keys.length; i++) {
-    var kk = keys[i];
-    ws3d.push([kk, byMo[kk].count, parseFloat(byMo[kk].miles.toFixed(2)), parseFloat((byMo[kk].miles*rate).toFixed(2))]);
-  }
-  var ws3 = XLSX.utils.aoa_to_sheet(ws3d);
-  ws3['!cols'] = [{wch:10},{wch:10},{wch:13},{wch:14}];
-  XLSX.utils.book_append_sheet(wb, ws3, '月度汇总');
+  var ws3d=[['月份','行程次数','总里程(mi)','IRS 抵税额']];
+  var keys=Object.keys(byMo).sort();
+  for(i=0;i<keys.length;i++){var kk=keys[i];ws3d.push([kk,byMo[kk].count,parseFloat(byMo[kk].miles.toFixed(2)),parseFloat((byMo[kk].miles*rate).toFixed(2))]);}
+  var ws3=XLSX.utils.aoa_to_sheet(ws3d); ws3['!cols']=[{wch:10},{wch:10},{wch:13},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws3,'月度汇总');
 
-  // ---- Download ----
-  var fname = 'Mileage_' + year + '_里程记录.xlsx';
-  var wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  var blob  = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
+  var fname='Mileage_'+year+'_里程记录.xlsx';
+  var wbout=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  var blob=new Blob([wbout],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   if (isIOS) {
-    // iOS Safari: open blob URL in new tab — user taps Share → Save to Files
-    var url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    // Show guidance
-    document.getElementById('ios-notice-hist').style.display  = 'block';
-    document.getElementById('ios-notice-stats').style.display = 'block';
-    showToast('📁 请在新页面点分享 → 存储到文件', 4000);
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 30000);
+    var url=URL.createObjectURL(blob); window.open(url,'_blank');
+    document.getElementById('ios-notice-hist').style.display='block';
+    document.getElementById('ios-notice-stats').style.display='block';
+    showToast('📁 请在新页面点分享→存储到文件',4000);
+    setTimeout(function(){URL.revokeObjectURL(url);},30000);
   } else {
-    // Android + Windows: standard <a> click download
-    var url2 = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url2;
-    a.download = fname;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function(){
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url2);
-    }, 1000);
+    var url2=URL.createObjectURL(blob);
+    var a=document.createElement('a'); a.href=url2; a.download=fname; a.style.display='none';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url2);},1000);
     showToast('✓ 正在下载…');
   }
 }
 
 // ===== Helpers =====
-function fmtDate(d) {
-  return pad(d.getMonth()+1) + '/' + pad(d.getDate()) + '/' + d.getFullYear();
-}
-function fmtTime(d) {
-  return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
-}
+function fmtDate(d){return pad(d.getMonth()+1)+'/'+pad(d.getDate())+'/'+d.getFullYear();}
+function fmtTime(d){return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());}
 
-// ===== Load XLSX from CDN async (don't block page) =====
-(function() {
-  var s = document.createElement('script');
-  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-  s.onerror = function() {
-    // Retry once with unpkg mirror
-    var s2 = document.createElement('script');
-    s2.src = 'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js';
+// ===== Load XLSX async with fallback =====
+(function(){
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onerror=function(){
+    var s2=document.createElement('script');
+    s2.src='https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js';
     document.head.appendChild(s2);
   };
   document.head.appendChild(s);
 })();
 
-// ===== Init =====
-renderHistory();
+// ===== Init: load from cloud on start =====
+fetchTrips(function(err) {
+  if (err) showToast('⚠️ 无法连接云端，显示本地缓存');
+  else setSyncDot('ok');
+  renderHistory();
+});
 </script>
 </body>
 </html>
