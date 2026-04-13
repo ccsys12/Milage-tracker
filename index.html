@@ -149,6 +149,28 @@ tbody tr:last-child td{border-bottom:none;}
 .spin-icon{display:inline-block;-webkit-animation:spin 1s linear infinite;animation:spin 1s linear infinite;font-size:20px;margin-bottom:8px;}
 @-webkit-keyframes spin{to{-webkit-transform:rotate(360deg);transform:rotate(360deg);}}
 @keyframes spin{to{transform:rotate(360deg);}}
+
+/* INLINE EDIT ROW */
+.edit-row td { background: var(--s2); padding: 10px 8px; }
+.edit-row input[type=number],
+.edit-row input[type=text],
+.edit-row input[type=time],
+.edit-row select {
+  background: var(--s3); border: 1px solid var(--bd2); border-radius: 6px;
+  padding: 7px 9px; font-size: 14px; color: var(--tx);
+  -webkit-appearance: none; appearance: none; width: 100%;
+  font-family: inherit; outline: none;
+}
+.edit-row .erow { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; gap: 7px; padding: 4px 0; }
+.edit-row .ef { display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; gap: 3px; -webkit-flex: 1 1 100px; flex: 1 1 100px; }
+.edit-row .ef label { font-size: 10px; color: var(--mu); text-transform: uppercase; letter-spacing: .5px; }
+.edit-row .ebtns { display: -webkit-flex; display: flex; gap: 7px; margin-top: 8px; }
+.edit-row .ebtn { -webkit-flex: 1; flex: 1; padding: 10px; border-radius: 7px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; -webkit-appearance: none; appearance: none; font-family: inherit; min-height: 40px; }
+.ebtn-save   { background: var(--gr); color: #000; }
+.ebtn-cancel { background: var(--s3); color: var(--mu2); }
+.ebtn-save:active, .ebtn-cancel:active { opacity: .8; }
+.edit-open { color: var(--am) !important; }
+
 </style>
 </head>
 <body>
@@ -410,6 +432,22 @@ function updateTrip(id, endTime, miles, cb) {
   xhr.send(body);
 }
 
+// Update all editable fields (miles, purpose, car, date, times)
+function updateAllFields(id, fields, cb) {
+  setSyncDot('spin');
+  var xhr = new XMLHttpRequest();
+  xhr.open('PATCH', SB_URL + '/rest/v1/' + TABLE + '?id=eq.' + id, true);
+  var hdrs = sbHeaders();
+  hdrs['Prefer'] = 'return=minimal';
+  for (var k in hdrs) xhr.setRequestHeader(k, hdrs[k]);
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) { setSyncDot('ok'); if (cb) cb(null); }
+    else { setSyncDot('err'); if (cb) cb(new Error('HTTP ' + xhr.status)); }
+  };
+  xhr.onerror = function() { setSyncDot('err'); if (cb) cb(new Error('Network')); };
+  xhr.send(JSON.stringify(fields));
+}
+
 // Delete one trip
 function deleteTrip(id, cb) {
   setSyncDot('spin');
@@ -457,7 +495,33 @@ function goTab(n) {
 }
 
 // ===== GPS & Trip =====
-var activeTrip = null, watchId = null, lastCoords = null, totalMiles = 0, liveTimer = null;
+var activeTrip = null, watchId = null, liveTimer = null;
+var totalMiles = 0;
+
+// Smoothed position state (simple weighted average to reduce jitter)
+var gpsState = null;  // { lat, lon, ts, accuracy }
+
+// NoSleep: keep screen on via invisible video trick (iOS/Android)
+var noSleepVideo = null;
+function enableNoSleep() {
+  try {
+    if (noSleepVideo) return;
+    noSleepVideo = document.createElement('video');
+    noSleepVideo.setAttribute('playsinline','');
+    noSleepVideo.setAttribute('muted','');
+    noSleepVideo.setAttribute('loop','');
+    // 1x1 transparent mp4 — keeps screen awake on most browsers
+    noSleepVideo.setAttribute('src','data:video/mp4;base64,AAAAIGZ0eXBtcDQyAAAAAG1wNDJpc29tAAAAA');
+    noSleepVideo.style.cssText='position:fixed;width:1px;height:1px;opacity:0;top:0;left:0;';
+    document.body.appendChild(noSleepVideo);
+    noSleepVideo.play().catch(function(){});
+  } catch(e){}
+}
+function disableNoSleep() {
+  try {
+    if (noSleepVideo) { noSleepVideo.pause(); document.body.removeChild(noSleepVideo); noSleepVideo = null; }
+  } catch(e){}
+}
 
 function setGPS(state, msg) {
   document.getElementById('gdot').className = 'dot'+(state==='on'?' on':state==='err'?' err':'');
@@ -471,16 +535,86 @@ function haversine(la1,lo1,la2,lo2) {
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
+// ---- Core GPS update handler ----
+// Filters bad points, smooths jitter, accumulates distance
+function onGPSUpdate(pos) {
+  var acc = pos.coords.accuracy;       // meters — lower is better
+  var lat = pos.coords.latitude;
+  var lon = pos.coords.longitude;
+  var spd = pos.coords.speed;          // m/s, may be null
+  var now = pos.timestamp || Date.now();
+
+  // 1. ACCURACY GATE: reject points worse than 50m accuracy
+  //    In open areas GPS is 3-10m; 50m allows urban use while blocking wild jumps
+  if (acc > 50) {
+    setGPS('on', '行驶中 · 信号弱(' + Math.round(acc) + 'm)，等待…');
+    return;
+  }
+
+  if (!gpsState) {
+    // First point — just record it, don't add distance yet
+    gpsState = { lat: lat, lon: lon, ts: now, acc: acc };
+    setGPS('on', '已锁定 · 精度 ±' + Math.round(acc) + 'm');
+    return;
+  }
+
+  var timeDelta = (now - gpsState.ts) / 1000;  // seconds since last point
+  if (timeDelta <= 0) return;                   // duplicate timestamp, skip
+
+  // 2. RAW DISTANCE between last accepted point and this point
+  var rawDist = haversine(gpsState.lat, gpsState.lon, lat, lon);  // miles
+
+  // 3. SPEED CHECK: implied speed in mph
+  var impliedSpeedMph = (rawDist / timeDelta) * 3600;
+
+  // Reject if implied speed > 150 mph (GPS teleport / satellite glitch)
+  if (impliedSpeedMph > 150) {
+    setGPS('on', '行驶中 · 检测到定位跳跃，已过滤');
+    return;
+  }
+
+  // 4. MINIMUM MOVEMENT THRESHOLD: ignore < 5 meters (stationary GPS noise)
+  //    5 meters = 0.003107 miles
+  var minMoveMiles = 0.003107;
+  if (rawDist < minMoveMiles) {
+    // Not moving — update timestamp but don't accumulate distance
+    gpsState.ts = now;
+    return;
+  }
+
+  // 5. SMOOTHING: if device reports speed, cross-check against GPS-derived speed
+  //    If they diverge too much, weight toward the reported speed
+  var distToAdd = rawDist;
+  if (spd !== null && spd >= 0) {
+    var reportedMph = spd * 2.23694;  // convert m/s to mph
+    // If speed sensor says we're going much slower than GPS implies,
+    // cap the distance to what speed sensor suggests
+    if (reportedMph < impliedSpeedMph * 0.5 && reportedMph < 5) {
+      // Likely stationary despite GPS drift — skip
+      gpsState.ts = now;
+      return;
+    }
+  }
+
+  // 6. ACCEPT point and accumulate
+  totalMiles += distToAdd;
+  gpsState = { lat: lat, lon: lon, ts: now, acc: acc };
+  setGPS('on', '行驶中 · ±' + Math.round(acc) + 'm');
+}
+
 function startTrip() {
   if (!navigator.geolocation) { setGPS('err','此设备不支持 GPS'); return; }
   document.getElementById('bstart').disabled = true;
   setGPS('','正在定位，请稍候…');
 
+  // Request high-accuracy initial fix
   navigator.geolocation.getCurrentPosition(
     function(pos) {
-      lastCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
       totalMiles = 0;
-      setGPS('on','已锁定 · '+lastCoords.lat.toFixed(4)+', '+lastCoords.lon.toFixed(4));
+      gpsState = null;  // reset smoother
+
+      var acc = pos.coords.accuracy;
+      setGPS('on','已锁定 · 精度 ±'+Math.round(acc)+'m');
 
       var now = new Date();
       activeTrip = {
@@ -492,7 +626,7 @@ function startTrip() {
         startTs:   now.getTime()
       };
 
-      // Insert to Supabase immediately (with end_time null, miles 0)
+      // Insert to Supabase immediately
       var tripToInsert = {
         id: activeTrip.id, car: activeTrip.car, purpose: activeTrip.purpose,
         date: activeTrip.date, startTime: activeTrip.startTime,
@@ -505,16 +639,23 @@ function startTrip() {
       document.getElementById('bend').disabled = false;
       document.getElementById('live').className = 'live on';
 
+      // Keep screen awake so GPS isn't throttled
+      enableNoSleep();
+
+      // Watch with maximum frequency: maximumAge:0 forces fresh reading every time
+      // timeout:10000 gives 10s to get each update before error callback
       watchId = navigator.geolocation.watchPosition(
-        function(p) {
-          if (lastCoords) {
-            var d = haversine(lastCoords.lat,lastCoords.lon,p.coords.latitude,p.coords.longitude);
-            if (d >= 0 && d < 50) totalMiles += d;
-          }
-          lastCoords = { lat: p.coords.latitude, lon: p.coords.longitude };
+        onGPSUpdate,
+        function(e) {
+          if (e.code === 1) setGPS('err','GPS 权限被关闭');
+          else if (e.code === 2) setGPS('on','行驶中 · 信号暂时丢失…');
+          // code 3 = timeout, just retry automatically
         },
-        function(e) { if (e.code===1) setGPS('err','GPS 权限被关闭'); },
-        { enableHighAccuracy:true, maximumAge:4000, timeout:30000 }
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,       // always get fresh position, never use cache
+          timeout: 10000       // 10s per update attempt
+        }
       );
 
       liveTimer = setInterval(function() {
@@ -541,6 +682,8 @@ function endTrip() {
   if (!activeTrip) { showToast('⚠️ 没有进行中的行程'); return; }
   if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
   if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+  disableNoSleep();
+  gpsState = null;
 
   var now = new Date();
   var endTime = fmtTime(now);
@@ -628,6 +771,9 @@ function loadAndRenderHistory() {
   });
 }
 
+// Currently open edit row id
+var editingId = null;
+
 function renderHistory() {
   var el = document.getElementById('hist-content');
   if (!trips.length) {
@@ -637,22 +783,138 @@ function renderHistory() {
   var rows = '';
   for (var i = 0; i < trips.length; i++) {
     var t = trips[i];
+    var isEditing = (editingId === t.id);
+    // Main data row
     rows +=
-      '<tr>'+
+      '<tr id="row-'+t.id+'">'+
       '<td style="color:var(--mu)">'+(trips.length-i)+'</td>'+
       '<td>'+esc(t.date)+'</td>'+
       '<td>'+esc(t.startTime)+'</td>'+
       '<td>'+esc(t.endTime||'—')+'</td>'+
       '<td style="font-weight:700;color:var(--gr)">'+parseFloat(t.miles).toFixed(2)+'</td>'+
       '<td>'+vtag(t.car)+'</td>'+
-      '<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mu)">'+esc(t.purpose)+'</td>'+
-      '<td><button class="db" onclick="confirmDelete('+t.id+')">✕</button></td>'+
+      '<td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mu)">'+esc(t.purpose)+'</td>'+
+      '<td style="white-space:nowrap">'+
+        '<button class="db'+(isEditing?' edit-open':'')+'" title="编辑" onclick="toggleEdit('+t.id+')">✎</button>'+
+        '<button class="db" title="删除" onclick="confirmDelete('+t.id+')">✕</button>'+
+      '</td>'+
       '</tr>';
+    // Inline edit row (shown when editing)
+    if (isEditing) {
+      // Convert MM/DD/YYYY -> YYYY-MM-DD for date input
+      var dp = t.date.split('/');
+      var dateVal = (dp[2]||'') + '-' + (dp[0]||'') + '-' + (dp[1]||'');
+      rows +=
+        '<tr class="edit-row" id="editrow-'+t.id+'">'+
+        '<td colspan="8">'+
+          '<div class="erow">'+
+            '<div class="ef"><label>里程 (miles)</label>'+
+              '<input type="number" id="e-miles-'+t.id+'" value="'+parseFloat(t.miles).toFixed(2)+'" step="0.01" min="0" inputmode="decimal">'+
+            '</div>'+
+            '<div class="ef"><label>事由</label>'+
+              '<input type="text" id="e-purpose-'+t.id+'" value="'+esc(t.purpose === '—' ? '' : t.purpose)+'" placeholder="可留空">'+
+            '</div>'+
+            '<div class="ef"><label>车辆</label>'+
+              '<select id="e-car-'+t.id+'">'+
+                '<option value="F-150"'+(t.car==='F-150'?' selected':'')+'>🛻 F-150</option>'+
+                '<option value="Tesla 小白"'+(t.car==='Tesla 小白'?' selected':'')+'>🤍 Tesla 小白</option>'+
+                '<option value="Tesla 小灰"'+(t.car==='Tesla 小灰'?' selected':'')+'>🩶 Tesla 小灰</option>'+
+                '<option value="Benz 200"'+(t.car==='Benz 200'?' selected':'')+'>⭐ Benz 200</option>'+
+              '</select>'+
+            '</div>'+
+            '<div class="ef"><label>日期</label>'+
+              '<input type="date" id="e-date-'+t.id+'" value="'+dateVal+'">'+
+            '</div>'+
+            '<div class="ef"><label>出发时间</label>'+
+              '<input type="time" id="e-st-'+t.id+'" value="'+(t.startTime==='—'?'':t.startTime)+'">'+
+            '</div>'+
+            '<div class="ef"><label>到达时间</label>'+
+              '<input type="time" id="e-et-'+t.id+'" value="'+(t.endTime==='—'?'':t.endTime)+'">'+
+            '</div>'+
+          '</div>'+
+          '<div class="ebtns">'+
+            '<button class="ebtn ebtn-cancel" onclick="cancelEdit()">取消</button>'+
+            '<button class="ebtn ebtn-save"   onclick="saveEdit('+t.id+')">✓ 保存修改</button>'+
+          '</div>'+
+        '</td>'+
+        '</tr>';
+    }
   }
   el.innerHTML =
     '<div class="tw"><table>'+
     '<thead><tr><th>#</th><th>日期</th><th>出发</th><th>到达</th><th>里程</th><th>车辆</th><th>事由</th><th></th></tr></thead>'+
     '<tbody>'+rows+'</tbody></table></div>';
+}
+
+function toggleEdit(id) {
+  editingId = (editingId === id) ? null : id;
+  renderHistory();
+  // Scroll edit row into view on mobile
+  if (editingId) {
+    setTimeout(function() {
+      var el = document.getElementById('editrow-' + id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 80);
+  }
+}
+
+function cancelEdit() {
+  editingId = null;
+  renderHistory();
+}
+
+function saveEdit(id) {
+  var milesEl   = document.getElementById('e-miles-'   + id);
+  var purposeEl = document.getElementById('e-purpose-' + id);
+  var carEl     = document.getElementById('e-car-'     + id);
+  var dateEl    = document.getElementById('e-date-'    + id);
+  var stEl      = document.getElementById('e-st-'      + id);
+  var etEl      = document.getElementById('e-et-'      + id);
+
+  var miles = parseFloat(milesEl.value);
+  if (isNaN(miles) || miles < 0) { showToast('⚠️ 请填写有效里程'); return; }
+
+  // Convert YYYY-MM-DD back to MM/DD/YYYY
+  var displayDate = '';
+  if (dateEl.value) {
+    var dp = dateEl.value.split('-');
+    displayDate = dp[1] + '/' + dp[2] + '/' + dp[0];
+  }
+
+  var newPurpose   = purposeEl.value.trim() || '—';
+  var newCar       = carEl.value;
+  var newStartTime = stEl.value || '—';
+  var newEndTime   = etEl.value || '—';
+
+  // Build Supabase patch fields
+  var fields = {
+    miles:      miles,
+    purpose:    newPurpose,
+    car:        newCar,
+    end_time:   newEndTime === '—' ? null : newEndTime,
+    start_time: newStartTime === '—' ? null : newStartTime
+  };
+  if (displayDate) fields.date = displayDate;
+
+  updateAllFields(id, fields, function(err) {
+    if (err) { showToast('⚠️ 保存失败，请检查网络'); return; }
+    // Update local cache
+    for (var i = 0; i < trips.length; i++) {
+      if (trips[i].id === id) {
+        trips[i].miles     = miles;
+        trips[i].purpose   = newPurpose;
+        trips[i].car       = newCar;
+        trips[i].startTime = newStartTime;
+        trips[i].endTime   = newEndTime;
+        if (displayDate) trips[i].date = displayDate;
+        break;
+      }
+    }
+    saveCache();
+    editingId = null;
+    renderHistory();
+    showToast('✓ 修改已保存并同步！');
+  });
 }
 
 function confirmDelete(id) {
