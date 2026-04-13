@@ -441,7 +441,35 @@ function insertTrip(trip, cb) {
   xhr.send(body);
 }
 
-// Update end_time + miles when trip ends
+// Upsert complete trip record (INSERT or UPDATE if id already exists)
+// This is the safe single-shot write used by endTrip
+function upsertTrip(trip, cb) {
+  setSyncDot('spin');
+  var body = JSON.stringify({
+    id:         trip.id,
+    car:        trip.car,
+    purpose:    trip.purpose,
+    date:       trip.date,
+    start_time: trip.startTime,
+    end_time:   trip.endTime,
+    miles:      trip.miles,
+    manual:     trip.manual || false
+  });
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', SB_URL + '/rest/v1/' + TABLE, true);
+  var hdrs = sbHeaders();
+  // Prefer: resolution=merge-duplicates makes it an UPSERT on the primary key (id)
+  hdrs['Prefer'] = 'return=minimal,resolution=merge-duplicates';
+  for (var k in hdrs) xhr.setRequestHeader(k, hdrs[k]);
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) { setSyncDot('ok'); if (cb) cb(null); }
+    else { setSyncDot('err'); if (cb) cb(new Error('HTTP ' + xhr.status + ': ' + xhr.responseText)); }
+  };
+  xhr.onerror = function() { setSyncDot('err'); if (cb) cb(new Error('Network error')); };
+  xhr.send(body);
+}
+
+// Update end_time + miles when trip ends (kept for editAllFields compatibility)
 function updateTrip(id, endTime, miles, cb) {
   setSyncDot('spin');
   var body = JSON.stringify({ end_time: endTime, miles: miles });
@@ -581,8 +609,10 @@ function startAutoStopSequence() {
   if (autoStopTimer) clearTimeout(autoStopTimer);
   autoStopTimer = setTimeout(function() {
     if (autoCountInterval) { clearInterval(autoCountInterval); autoCountInterval = null; }
-    // Auto-end the trip
-    endTrip(true);  // pass flag so toast says "自动结束"
+    // Snapshot totalMiles at the exact moment auto-stop fires,
+    // in case the variable was frozen while app was in background
+    var milesAtAutoStop = totalMiles;
+    endTrip(true, milesAtAutoStop);
   }, AUTO_STOP_SECS * 1000);
 }
 
@@ -731,14 +761,8 @@ function startTrip() {
         startTs:   now.getTime()
       };
 
-      insertTrip({
-        id: activeTrip.id, car: activeTrip.car, purpose: activeTrip.purpose,
-        date: activeTrip.date, startTime: activeTrip.startTime,
-        endTime: null, miles: 0, manual: false
-      }, function(err) {
-        if (err) showToast('⚠️ 云端同步失败，数据将本地保存');
-      });
-
+      // Don't INSERT to Supabase yet — wait until endTrip so we always
+      // write the complete record with correct miles in a single operation.
       document.getElementById('bend').disabled = false;
       document.getElementById('live').className = 'live on';
       enableNoSleep();
@@ -772,30 +796,66 @@ function startTrip() {
   );
 }
 
-function endTrip(auto) {
+function endTrip(auto, milesOverride) {
   if (!activeTrip) { showToast('⚠️ 没有进行中的行程'); return; }
   if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
   if (liveTimer)        { clearInterval(liveTimer); liveTimer = null; }
   resetAutoStop();
   disableNoSleep();
-  gpsState = null;
-  lastDetectedMph = null;
 
   var now     = new Date();
   var endTime = fmtTime(now);
-  var miles   = parseFloat(totalMiles.toFixed(2));
 
-  updateTrip(activeTrip.id, endTime, miles, function(err) {
-    if (err) showToast('⚠️ 云端更新失败，请检查网络');
-    else showToast(auto ? '🅿 已自动结束行程并同步！'+miles+' mi' : '✓ 行程已同步到云端！'+miles+' mi', 3000);
-  });
+  // Use snapshotted miles when called from auto-stop timer (avoids background freeze bug)
+  // Fall back to live totalMiles for manual end
+  var rawMiles = (typeof milesOverride === 'number' && milesOverride >= 0)
+    ? milesOverride
+    : totalMiles;
+  var miles = parseFloat(rawMiles.toFixed(2));
 
-  activeTrip.endTime = endTime;
-  activeTrip.miles   = miles;
-  trips.unshift(activeTrip);
+  // Guard: if miles is 0 but trip ran for > 30 seconds, something went wrong —
+  // warn user so they can manually correct it
+  var tripSecs = activeTrip.startTs ? (Date.now() - activeTrip.startTs) / 1000 : 0;
+  if (miles === 0 && tripSecs > 30) {
+    showToast('⚠️ 里程读取为 0，请在历史记录中手动修正', 5000);
+  }
+
+  // Capture trip reference before clearing activeTrip
+  var tripToSave = {
+    id:        activeTrip.id,
+    car:       activeTrip.car,
+    purpose:   activeTrip.purpose,
+    date:      activeTrip.date,
+    startTime: activeTrip.startTime,
+    startTs:   activeTrip.startTs,
+    endTime:   endTime,
+    miles:     miles,
+    manual:    false
+  };
+
+  // Push to local cache immediately (don't wait for cloud)
+  trips.unshift(tripToSave);
   saveCache();
 
-  activeTrip = null;
+  // Sync to Supabase — use UPSERT so it works whether or not
+  // a partial record was already inserted (covers auto-stop + manual end)
+  upsertTrip(tripToSave, function(err) {
+    if (err) {
+      showToast('⚠️ 云端同步失败，里程已存本地，请稍后重试', 4000);
+    } else {
+      var msg = auto
+        ? '🅿 自动结束！已记录 ' + miles + ' mi'
+        : '✓ 行程已保存！' + miles + ' mi';
+      showToast(msg, 3000);
+    }
+  });
+
+  // Reset all state
+  gpsState        = null;
+  lastDetectedMph = null;
+  activeTrip      = null;
+  totalMiles      = 0;
+
   document.getElementById('bstart').disabled = false;
   document.getElementById('bend').disabled   = true;
   document.getElementById('live').className  = 'live';
