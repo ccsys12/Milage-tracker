@@ -171,6 +171,30 @@ tbody tr:last-child td{border-bottom:none;}
 .ebtn-save:active, .ebtn-cancel:active { opacity: .8; }
 .edit-open { color: var(--am) !important; }
 
+
+/* AUTO-STOP COUNTDOWN BANNER */
+.auto-warn {
+  display:none;
+  background:rgba(245,158,11,.13);
+  border:1px solid rgba(245,158,11,.35);
+  border-radius:8px;
+  padding:10px 14px;
+  margin-top:8px;
+  font-size:13px;
+  color:var(--am);
+  -webkit-align-items:center; align-items:center;
+  -webkit-justify-content:space-between; justify-content:space-between;
+  gap:10px;
+}
+.auto-warn.on { display:-webkit-flex; display:flex; }
+.auto-warn .aw-cancel {
+  background:var(--s3); border:1px solid var(--bd2); border-radius:6px;
+  padding:5px 12px; font-size:12px; font-weight:600; color:var(--mu2);
+  cursor:pointer; -webkit-appearance:none; appearance:none; font-family:inherit;
+  white-space:nowrap; -webkit-flex-shrink:0; flex-shrink:0;
+}
+.auto-warn .aw-cancel:active { opacity:.8; }
+
 </style>
 </head>
 <body>
@@ -227,6 +251,11 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="live" id="live">
       <span id="ltxt">行驶中…</span>
       <span id="lmi">0.00 mi</span>
+    </div>
+    <!-- Auto-stop countdown banner -->
+    <div class="auto-warn" id="auto-warn">
+      <span id="aw-msg">⏱ 即将自动结束…</span>
+      <button class="aw-cancel" onclick="cancelAutoStop()">继续行程</button>
     </div>
   </div>
 
@@ -497,11 +526,69 @@ function goTab(n) {
 // ===== GPS & Trip =====
 var activeTrip = null, watchId = null, liveTimer = null;
 var totalMiles = 0;
+var gpsState   = null;  // { lat, lon, ts, acc }
 
-// Smoothed position state (simple weighted average to reduce jitter)
-var gpsState = null;  // { lat, lon, ts, accuracy }
+// ── Auto-stop state ──────────────────────────────────────────────────────────
+// STOP condition  : speed < 5 mph (parked) OR speed < 4 mph (walking pace)
+//                   sustained for AUTO_WARN_SECS before showing banner,
+//                   then AUTO_STOP_SECS countdown before firing endTrip()
+var AUTO_WARN_SECS  = 5 * 60;   // 5 min of slow/stopped before warning banner
+var AUTO_STOP_SECS  = 60;       // 1 min countdown shown on banner before auto-end
+var WALK_SPEED_MPH  = 4.0;      // mph — above this = driving, below = walking/parked
+var autoStopTimer   = null;     // setTimeout handle for the final auto-end
+var autoWarnTimer   = null;     // setTimeout handle for showing the banner
+var slowStartTs     = null;     // timestamp when slow/stop period began
+var autoCountdown   = 0;        // seconds remaining shown on banner
+var autoCountInterval = null;   // setInterval for countdown display
 
-// NoSleep: keep screen on via invisible video trick (iOS/Android)
+function resetAutoStop() {
+  // Called whenever speed picks back up — clears all timers
+  slowStartTs = null;
+  if (autoWarnTimer)    { clearTimeout(autoWarnTimer);   autoWarnTimer   = null; }
+  if (autoStopTimer)    { clearTimeout(autoStopTimer);   autoStopTimer   = null; }
+  if (autoCountInterval){ clearInterval(autoCountInterval); autoCountInterval = null; }
+  document.getElementById('auto-warn').className = 'auto-warn';
+}
+
+function cancelAutoStop() {
+  // User tapped "继续行程" — dismiss banner and reset
+  resetAutoStop();
+  showToast('✓ 已取消自动结束，继续记录');
+}
+
+function startAutoStopSequence() {
+  // Show warning banner and begin countdown
+  autoCountdown = AUTO_STOP_SECS;
+  var warnEl = document.getElementById('auto-warn');
+  var msgEl  = document.getElementById('aw-msg');
+  warnEl.className = 'auto-warn on';
+  msgEl.textContent = '🅿 已停车/步行，' + autoCountdown + ' 秒后自动结束行程';
+
+  if (autoCountInterval) clearInterval(autoCountInterval);
+  autoCountInterval = setInterval(function() {
+    autoCountdown--;
+    if (autoCountdown <= 0) {
+      clearInterval(autoCountInterval);
+      autoCountInterval = null;
+      return;
+    }
+    var reason = (lastDetectedMph !== null && lastDetectedMph < WALK_SPEED_MPH)
+      ? (lastDetectedMph < 0.5 ? '🅿 已停车' : '🚶 步行中')
+      : '🅿 已停车';
+    msgEl.textContent = reason + '，' + autoCountdown + ' 秒后自动结束行程';
+  }, 1000);
+
+  if (autoStopTimer) clearTimeout(autoStopTimer);
+  autoStopTimer = setTimeout(function() {
+    if (autoCountInterval) { clearInterval(autoCountInterval); autoCountInterval = null; }
+    // Auto-end the trip
+    endTrip(true);  // pass flag so toast says "自动结束"
+  }, AUTO_STOP_SECS * 1000);
+}
+
+var lastDetectedMph = null;  // for banner label
+
+// ── NoSleep ──────────────────────────────────────────────────────────────────
 var noSleepVideo = null;
 function enableNoSleep() {
   try {
@@ -510,7 +597,6 @@ function enableNoSleep() {
     noSleepVideo.setAttribute('playsinline','');
     noSleepVideo.setAttribute('muted','');
     noSleepVideo.setAttribute('loop','');
-    // 1x1 transparent mp4 — keeps screen awake on most browsers
     noSleepVideo.setAttribute('src','data:video/mp4;base64,AAAAIGZ0eXBtcDQyAAAAAG1wNDJpc29tAAAAA');
     noSleepVideo.style.cssText='position:fixed;width:1px;height:1px;opacity:0;top:0;left:0;';
     document.body.appendChild(noSleepVideo);
@@ -535,71 +621,89 @@ function haversine(la1,lo1,la2,lo2) {
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-// ---- Core GPS update handler ----
-// Filters bad points, smooths jitter, accumulates distance
+// ── Core GPS update ──────────────────────────────────────────────────────────
 function onGPSUpdate(pos) {
-  var acc = pos.coords.accuracy;       // meters — lower is better
+  var acc = pos.coords.accuracy;
   var lat = pos.coords.latitude;
   var lon = pos.coords.longitude;
-  var spd = pos.coords.speed;          // m/s, may be null
+  var spd = pos.coords.speed;   // m/s or null
   var now = pos.timestamp || Date.now();
 
-  // 1. ACCURACY GATE: reject points worse than 50m accuracy
-  //    In open areas GPS is 3-10m; 50m allows urban use while blocking wild jumps
+  // 1. Accuracy gate
   if (acc > 50) {
-    setGPS('on', '行驶中 · 信号弱(' + Math.round(acc) + 'm)，等待…');
+    setGPS('on','行驶中 · 信号弱(±'+Math.round(acc)+'m)，等待…');
     return;
   }
 
   if (!gpsState) {
-    // First point — just record it, don't add distance yet
-    gpsState = { lat: lat, lon: lon, ts: now, acc: acc };
-    setGPS('on', '已锁定 · 精度 ±' + Math.round(acc) + 'm');
+    gpsState = { lat:lat, lon:lon, ts:now, acc:acc };
+    setGPS('on','已锁定 · 精度 ±'+Math.round(acc)+'m');
     return;
   }
 
-  var timeDelta = (now - gpsState.ts) / 1000;  // seconds since last point
-  if (timeDelta <= 0) return;                   // duplicate timestamp, skip
+  var timeDelta = (now - gpsState.ts) / 1000;
+  if (timeDelta <= 0) return;
 
-  // 2. RAW DISTANCE between last accepted point and this point
-  var rawDist = haversine(gpsState.lat, gpsState.lon, lat, lon);  // miles
+  // 2. Distance + implied speed
+  var rawDist = haversine(gpsState.lat, gpsState.lon, lat, lon);
+  var impliedMph = (rawDist / timeDelta) * 3600;
 
-  // 3. SPEED CHECK: implied speed in mph
-  var impliedSpeedMph = (rawDist / timeDelta) * 3600;
-
-  // Reject if implied speed > 150 mph (GPS teleport / satellite glitch)
-  if (impliedSpeedMph > 150) {
-    setGPS('on', '行驶中 · 检测到定位跳跃，已过滤');
+  // 3. Reject GPS teleport (>150 mph)
+  if (impliedMph > 150) {
+    setGPS('on','行驶中 · 定位跳跃，已过滤');
     return;
   }
 
-  // 4. MINIMUM MOVEMENT THRESHOLD: ignore < 5 meters (stationary GPS noise)
-  //    5 meters = 0.003107 miles
-  var minMoveMiles = 0.003107;
-  if (rawDist < minMoveMiles) {
-    // Not moving — update timestamp but don't accumulate distance
-    gpsState.ts = now;
-    return;
-  }
-
-  // 5. SMOOTHING: if device reports speed, cross-check against GPS-derived speed
-  //    If they diverge too much, weight toward the reported speed
-  var distToAdd = rawDist;
+  // 4. Determine effective speed (prefer device speed sensor when available)
+  var effectiveMph = impliedMph;
   if (spd !== null && spd >= 0) {
-    var reportedMph = spd * 2.23694;  // convert m/s to mph
-    // If speed sensor says we're going much slower than GPS implies,
-    // cap the distance to what speed sensor suggests
-    if (reportedMph < impliedSpeedMph * 0.5 && reportedMph < 5) {
-      // Likely stationary despite GPS drift — skip
+    effectiveMph = spd * 2.23694;  // m/s → mph
+  }
+  lastDetectedMph = effectiveMph;
+
+  // 5. Minimum movement filter (< 5 m = GPS noise while stationary)
+  var minMoveMiles = 0.003107;
+  var isStopped    = rawDist < minMoveMiles;
+  var isSlowOrWalk = effectiveMph < WALK_SPEED_MPH;  // < 4 mph
+
+  if (isStopped) {
+    gpsState.ts = now;  // keep position, update time only
+  } else {
+    // Speed sensor cross-check: skip if sensor says nearly stationary
+    if (spd !== null && spd >= 0 && effectiveMph < impliedMph * 0.5 && effectiveMph < 5) {
       gpsState.ts = now;
-      return;
+      isSlowOrWalk = true;
+    } else {
+      totalMiles += rawDist;
+      gpsState = { lat:lat, lon:lon, ts:now, acc:acc };
     }
   }
 
-  // 6. ACCEPT point and accumulate
-  totalMiles += distToAdd;
-  gpsState = { lat: lat, lon: lon, ts: now, acc: acc };
-  setGPS('on', '行驶中 · ±' + Math.round(acc) + 'm');
+  // ── Auto-stop logic ──────────────────────────────────────────────────────
+  if (isStopped || isSlowOrWalk) {
+    // Vehicle is parked or person is walking
+    if (!slowStartTs) {
+      slowStartTs = now;  // mark start of slow period
+    }
+    var slowDuration = (now - slowStartTs) / 1000;  // seconds
+
+    if (slowDuration >= AUTO_WARN_SECS && !autoWarnTimer && !autoStopTimer) {
+      // Slow for 5 min — start the countdown sequence
+      startAutoStopSequence();
+    }
+
+    // Update GPS label
+    var label = effectiveMph < 0.5 ? '已停车' : '步行(' + effectiveMph.toFixed(1) + ' mph)';
+    var slowMins = Math.floor(slowDuration / 60);
+    var slowSecs = Math.round(slowDuration % 60);
+    if (!autoStopTimer) {
+      setGPS('on', label + ' · ' + slowMins + '分' + pad(slowSecs) + '秒');
+    }
+  } else {
+    // Moving at driving speed — reset auto-stop
+    resetAutoStop();
+    setGPS('on','行驶中 · ±'+Math.round(acc)+'m · '+effectiveMph.toFixed(0)+' mph');
+  }
 }
 
 function startTrip() {
@@ -607,11 +711,12 @@ function startTrip() {
   document.getElementById('bstart').disabled = true;
   setGPS('','正在定位，请稍候…');
 
-  // Request high-accuracy initial fix
   navigator.geolocation.getCurrentPosition(
     function(pos) {
-      totalMiles = 0;
-      gpsState = null;  // reset smoother
+      totalMiles     = 0;
+      gpsState       = null;
+      lastDetectedMph = null;
+      resetAutoStop();
 
       var acc = pos.coords.accuracy;
       setGPS('on','已锁定 · 精度 ±'+Math.round(acc)+'m');
@@ -626,36 +731,25 @@ function startTrip() {
         startTs:   now.getTime()
       };
 
-      // Insert to Supabase immediately
-      var tripToInsert = {
+      insertTrip({
         id: activeTrip.id, car: activeTrip.car, purpose: activeTrip.purpose,
         date: activeTrip.date, startTime: activeTrip.startTime,
         endTime: null, miles: 0, manual: false
-      };
-      insertTrip(tripToInsert, function(err) {
+      }, function(err) {
         if (err) showToast('⚠️ 云端同步失败，数据将本地保存');
       });
 
       document.getElementById('bend').disabled = false;
       document.getElementById('live').className = 'live on';
-
-      // Keep screen awake so GPS isn't throttled
       enableNoSleep();
 
-      // Watch with maximum frequency: maximumAge:0 forces fresh reading every time
-      // timeout:10000 gives 10s to get each update before error callback
       watchId = navigator.geolocation.watchPosition(
         onGPSUpdate,
         function(e) {
           if (e.code === 1) setGPS('err','GPS 权限被关闭');
           else if (e.code === 2) setGPS('on','行驶中 · 信号暂时丢失…');
-          // code 3 = timeout, just retry automatically
         },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,       // always get fresh position, never use cache
-          timeout: 10000       // 10s per update attempt
-        }
+        { enableHighAccuracy:true, maximumAge:0, timeout:10000 }
       );
 
       liveTimer = setInterval(function() {
@@ -678,24 +772,24 @@ function startTrip() {
   );
 }
 
-function endTrip() {
+function endTrip(auto) {
   if (!activeTrip) { showToast('⚠️ 没有进行中的行程'); return; }
   if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-  if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+  if (liveTimer)        { clearInterval(liveTimer); liveTimer = null; }
+  resetAutoStop();
   disableNoSleep();
   gpsState = null;
+  lastDetectedMph = null;
 
-  var now = new Date();
+  var now     = new Date();
   var endTime = fmtTime(now);
   var miles   = parseFloat(totalMiles.toFixed(2));
 
-  // Update in Supabase
   updateTrip(activeTrip.id, endTime, miles, function(err) {
     if (err) showToast('⚠️ 云端更新失败，请检查网络');
-    else showToast('✓ 行程已同步到云端！'+miles+' mi');
+    else showToast(auto ? '🅿 已自动结束行程并同步！'+miles+' mi' : '✓ 行程已同步到云端！'+miles+' mi', 3000);
   });
 
-  // Update local cache
   activeTrip.endTime = endTime;
   activeTrip.miles   = miles;
   trips.unshift(activeTrip);
@@ -705,6 +799,7 @@ function endTrip() {
   document.getElementById('bstart').disabled = false;
   document.getElementById('bend').disabled   = true;
   document.getElementById('live').className  = 'live';
+  document.getElementById('auto-warn').className = 'auto-warn';
   document.getElementById('purpose').value   = '';
   setGPS('','等待 GPS…');
 }
